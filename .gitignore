@@ -29,6 +29,9 @@ Makefile
 !1-hello-word/Makefile
 !1-hello-word/.vscode/
 !1-hello-word/.vscode/tasks.json
+!2-wifi/Makefile
+!2-wifi/.vscode/
+!2-wifi/.vscode/tasks.json
 
 # OS
 .DS_Store
