@@ -1,0 +1,35 @@
+[package]
+name = "lesson-2-wifi"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+autobins = false
+
+[features]
+default = []
+firmware = []
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "lesson-2-wifi"
+path = "src/main.rs"
+required-features = ["firmware"]
+test = false
+bench = false
+
+[dependencies]
+embedded-graphics = "0.8.2"
+
+[target.'cfg(target_arch = "xtensa")'.dependencies]
+embedded-hal = "1.0.0"
+embedded-hal-bus = "0.3.0"
+esp-alloc = "0.8.0"
+esp-backtrace = { version = "0.18.1", features = ["esp32s3", "panic-handler", "println"] }
+esp-bootloader-esp-idf = { version = "0.4.0", features = ["esp32s3"] }
+esp-hal = { version = "=1.0.0-rc.0", features = ["esp32s3", "unstable"] }
+esp-println = { version = "0.16.1", default-features = false, features = ["esp32s3", "uart"] }
+esp-wifi = { version = "0.15.1", default-features = false, features = ["esp32s3", "wifi", "builtin-scheduler", "esp-alloc"] }
+esp32s3 = { version = "0.33.0", features = ["rt"] }
+mipidsi = "0.10.0"

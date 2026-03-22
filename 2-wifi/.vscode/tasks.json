@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "lesson2:test",
+      "type": "shell",
+      "command": "cargo test",
+      "options": {
+        "cwd": "${workspaceFolder}/2-wifi"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    },
+    {
+      "label": "lesson2:build",
+      "type": "shell",
+      "command": "make build",
+      "options": {
+        "cwd": "${workspaceFolder}/2-wifi"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    },
+    {
+      "label": "lesson2:flash",
+      "type": "shell",
+      "command": "make flash",
+      "options": {
+        "cwd": "${workspaceFolder}/2-wifi"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    }
+  ]
+}

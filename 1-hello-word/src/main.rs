@@ -40,7 +40,7 @@ const PANEL_FRAMEBUFFER_WIDTH: u16 = 80;
 const PANEL_FRAMEBUFFER_HEIGHT: u16 = 160;
 const DISPLAY_OFFSET_X: u16 = 26;
 const DISPLAY_OFFSET_Y: u16 = 1;
-const BACKLIGHT_ACTIVE_HIGH: bool = false;
+const BACKLIGHT_ACTIVE_HIGH: bool = true;
 
 #[main]
 fn main() -> ! {
@@ -104,8 +104,8 @@ fn main() -> ! {
     .draw(&mut display)
     .expect("文字绘制失败");
 
-    // 板级页面正文明确写的是 LEDK 拉低点亮，这里优先按低有效尝试。
-    // 若上板后背光依然不亮，只改这一处常量再切回 `true` 即可。
+    // 参考页正文和示例代码对背光极性有冲突。
+    // 最终以上板结果为准：当前这块板子需要 GPIO41 拉高才能点亮背光。
     set_backlight(&mut backlight, true);
 
     println!("lesson 1: hello world rendered");
