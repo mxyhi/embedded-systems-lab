@@ -63,3 +63,5 @@ target
 findings.md
 progress.md
 task_plan.md
+docs/superpowers/specs/
+__pycache__

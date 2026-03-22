@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "lesson1:test",
+      "type": "shell",
+      "command": "cargo test",
+      "options": {
+        "cwd": "${workspaceFolder}/1-hello-word"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    },
+    {
+      "label": "lesson1:build",
+      "type": "shell",
+      "command": "make build",
+      "options": {
+        "cwd": "${workspaceFolder}/1-hello-word"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    },
+    {
+      "label": "lesson1:flash",
+      "type": "shell",
+      "command": "make flash",
+      "options": {
+        "cwd": "${workspaceFolder}/1-hello-word"
+      },
+      "problemMatcher": [
+        "$rustc"
+      ]
+    }
+  ]
+}
