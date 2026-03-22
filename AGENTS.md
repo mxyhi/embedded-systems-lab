@@ -7,7 +7,7 @@
 ## 参考资料
 
 - url: http://www.openedv.com/docs/index.html
-- ./.ref/\*
+- path: ./.ref/\*
 
 ## 资料同步规则
 
