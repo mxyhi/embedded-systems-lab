@@ -4,7 +4,8 @@ mod panel_bridge_host;
 use std::{
     fs,
     io::{Read, Write},
-    net::TcpStream,
+    net::{Shutdown, TcpStream},
+    os::fd::AsRawFd,
     path::PathBuf,
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -30,6 +31,23 @@ fn temp_state_dir() -> PathBuf {
     path.push(format!("codex-panel-test-{unique}"));
     fs::create_dir_all(&path).expect("临时目录应创建成功");
     path
+}
+
+fn reset_stream(stream: &TcpStream) {
+    let linger = libc::linger {
+        l_onoff: 1,
+        l_linger: 0,
+    };
+
+    unsafe {
+        libc::setsockopt(
+            stream.as_raw_fd(),
+            libc::SOL_SOCKET,
+            libc::SO_LINGER,
+            (&linger as *const libc::linger).cast(),
+            std::mem::size_of::<libc::linger>() as libc::socklen_t,
+        );
+    }
 }
 
 #[test]
@@ -192,6 +210,71 @@ fn tcp_server_pushes_snapshot_to_connected_board() {
     assert!(text.contains("SNAP\n"));
     assert!(text.contains("ACTIVE 1\n"));
     assert!(text.contains("TITLE 0 embedded-systems-lab/3-co...\n"));
+
+    fs::remove_dir_all(state_dir).ok();
+}
+
+#[test]
+fn tcp_server_survives_client_reset_and_accepts_reconnect() {
+    let state_dir = temp_state_dir();
+    let payload = r#"{
+        "session_id":"session-1",
+        "active":true,
+        "updated_at":123.0,
+        "cwd":"/Users/langhuam/workspace/self/embedded-systems-lab/3-codex-panel"
+    }"#;
+    fs::write(state_dir.join("session-1.json"), payload).expect("状态文件应写入成功");
+
+    let mut server = PanelTcpServer::bind("127.0.0.1", 0, state_dir.clone(), 0.01)
+        .expect("TCP server 应启动成功");
+    let address = server.address();
+
+    {
+        let mut client = TcpStream::connect(address).expect("客户端应连上 server");
+        client
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("读超时应设置成功");
+        client
+            .write_all(b"HELLO esp32-panel\n")
+            .expect("客户端 hello 应发送成功");
+        server.poll_once(123.0).expect("首次轮询应成功");
+        reset_stream(&client);
+        client.shutdown(Shutdown::Both).ok();
+    }
+
+    for tick in 0..5 {
+        server
+            .poll_once(124.0 + f64::from(tick))
+            .expect("客户端 reset 后 server 不应退出");
+        thread::sleep(Duration::from_millis(10));
+    }
+
+    let mut client = TcpStream::connect(address).expect("第二个客户端应能重新连上 server");
+    client
+        .set_read_timeout(Some(Duration::from_secs(1)))
+        .expect("读超时应设置成功");
+    client
+        .write_all(b"HELLO esp32-panel\n")
+        .expect("客户端 hello 应发送成功");
+
+    let deadline = SystemTime::now() + Duration::from_secs(1);
+    let mut received = Vec::new();
+    while SystemTime::now() < deadline {
+        server.poll_once(130.0).expect("重连后轮询应成功");
+        let mut chunk = [0_u8; 512];
+        match client.read(&mut chunk) {
+            Ok(0) => {}
+            Ok(size) => received.extend_from_slice(&chunk[..size]),
+            Err(_) => {}
+        }
+        if received.windows(b"SNAP\n".len()).any(|window| window == b"SNAP\n") {
+            break;
+        }
+    }
+
+    let text = String::from_utf8(received).expect("输出应是 ASCII");
+    assert!(text.contains("HELLO codex-panel 1\n"));
+    assert!(text.contains("SNAP\n"));
 
     fs::remove_dir_all(state_dir).ok();
 }

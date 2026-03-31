@@ -129,6 +129,7 @@ impl PanelTcpServer {
                         .insert(stream.as_raw_fd(), ClientConnection::new(stream));
                 }
                 Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(()),
+                Err(error) if is_dropworthy_client_error(&error) => continue,
                 Err(error) => return Err(error),
             }
         }
@@ -147,6 +148,10 @@ impl PanelTcpServer {
                     }
                     Ok(size) => connection.rx_buffer.extend_from_slice(&buffer[..size]),
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(error) if is_dropworthy_client_error(&error) => {
+                        dropped = true;
+                        break;
+                    }
                     Err(error) => return Err(error),
                 }
             }
@@ -181,6 +186,10 @@ impl PanelTcpServer {
                         connection.tx_buffer.drain(..size);
                     }
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(error) if is_dropworthy_client_error(&error) => {
+                        should_drop = true;
+                        break;
+                    }
                     Err(error) => return Err(error),
                 }
             }
@@ -192,6 +201,17 @@ impl PanelTcpServer {
 
         Ok(())
     }
+}
+
+fn is_dropworthy_client_error(error: &io::Error) -> bool {
+    matches!(
+        error.kind(),
+        io::ErrorKind::ConnectionReset
+            | io::ErrorKind::ConnectionAborted
+            | io::ErrorKind::BrokenPipe
+            | io::ErrorKind::NotConnected
+            | io::ErrorKind::UnexpectedEof
+    )
 }
 
 pub fn sanitize_label(text: &str) -> String {
