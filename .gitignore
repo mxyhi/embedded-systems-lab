@@ -32,6 +32,9 @@ Makefile
 !2-wifi/Makefile
 !2-wifi/.vscode/
 !2-wifi/.vscode/tasks.json
+!3-codex-panel/Makefile
+!3-codex-panel/.vscode/
+!3-codex-panel/.vscode/tasks.json
 
 # OS
 .DS_Store
@@ -65,3 +68,6 @@ progress.md
 task_plan.md
 docs/superpowers/specs/
 __pycache__
+/.codex/
+3-codex-panel/.venv/
+3-codex-panel/runtime/codex-state/
