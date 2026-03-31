@@ -128,7 +128,7 @@ impl PanelTcpServer {
                     self.clients
                         .insert(stream.as_raw_fd(), ClientConnection::new(stream));
                 }
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(()),
+                Err(error) if is_idle_listener_error(&error) => return Ok(()),
                 Err(error) if is_dropworthy_client_error(&error) => continue,
                 Err(error) => return Err(error),
             }
@@ -147,7 +147,7 @@ impl PanelTcpServer {
                         break;
                     }
                     Ok(size) => connection.rx_buffer.extend_from_slice(&buffer[..size]),
-                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(error) if is_idle_socket_error(&error) => break,
                     Err(error) if is_dropworthy_client_error(&error) => {
                         dropped = true;
                         break;
@@ -185,7 +185,7 @@ impl PanelTcpServer {
                     Ok(size) => {
                         connection.tx_buffer.drain(..size);
                     }
-                    Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+                    Err(error) if is_idle_socket_error(&error) => break,
                     Err(error) if is_dropworthy_client_error(&error) => {
                         should_drop = true;
                         break;
@@ -203,6 +203,20 @@ impl PanelTcpServer {
     }
 }
 
+fn is_idle_listener_error(error: &io::Error) -> bool {
+    matches!(
+        error.kind(),
+        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted | io::ErrorKind::TimedOut
+    )
+}
+
+fn is_idle_socket_error(error: &io::Error) -> bool {
+    matches!(
+        error.kind(),
+        io::ErrorKind::WouldBlock | io::ErrorKind::Interrupted
+    )
+}
+
 fn is_dropworthy_client_error(error: &io::Error) -> bool {
     matches!(
         error.kind(),
@@ -211,6 +225,7 @@ fn is_dropworthy_client_error(error: &io::Error) -> bool {
             | io::ErrorKind::BrokenPipe
             | io::ErrorKind::NotConnected
             | io::ErrorKind::UnexpectedEof
+            | io::ErrorKind::TimedOut
     )
 }
 
@@ -318,6 +333,10 @@ pub fn process_is_alive(pid: u32) -> bool {
     result == 0 || io::Error::last_os_error().raw_os_error() != Some(ESRCH)
 }
 
+pub fn is_recoverable_poll_error(error: &io::Error) -> bool {
+    is_idle_listener_error(error) || is_dropworthy_client_error(error) || is_idle_socket_error(error)
+}
+
 pub fn build_payload(sessions: &[SessionState]) -> String {
     let mut lines = vec![
         "SNAP".to_owned(),
@@ -346,3 +365,38 @@ pub fn parse_client_line(line: &[u8]) -> Option<(String, String)> {
 }
 
 use std::os::fd::AsRawFd;
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        is_dropworthy_client_error,
+        is_idle_listener_error,
+        is_idle_socket_error,
+        is_recoverable_poll_error,
+    };
+    use std::io;
+
+    #[test]
+    fn idle_socket_errors_cover_nonblocking_poll_path() {
+        assert!(is_idle_socket_error(&io::Error::from(io::ErrorKind::WouldBlock)));
+        assert!(is_idle_socket_error(&io::Error::from(io::ErrorKind::Interrupted)));
+        assert!(!is_idle_socket_error(&io::Error::from(io::ErrorKind::TimedOut)));
+    }
+
+    #[test]
+    fn idle_listener_errors_treat_timed_out_as_empty_poll() {
+        assert!(is_idle_listener_error(&io::Error::from(io::ErrorKind::TimedOut)));
+    }
+
+    #[test]
+    fn timed_out_client_error_is_dropworthy() {
+        assert!(is_dropworthy_client_error(&io::Error::from(io::ErrorKind::TimedOut)));
+    }
+
+    #[test]
+    fn recoverable_poll_errors_cover_transient_socket_failures() {
+        assert!(is_recoverable_poll_error(&io::Error::from(io::ErrorKind::TimedOut)));
+        assert!(is_recoverable_poll_error(&io::Error::from(io::ErrorKind::ConnectionReset)));
+        assert!(!is_recoverable_poll_error(&io::Error::other("boom")));
+    }
+}

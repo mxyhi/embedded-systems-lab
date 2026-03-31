@@ -345,6 +345,10 @@ make panel PANEL_SERVER_BIND=0.0.0.0 PANEL_SERVER_PORT=31337
 5. Rust server 能实时输出快照
    - 处理期间实测发出 `ACTIVE 1`
    - 快照内包含目录标签 `embedded-systems-lab/3-co...`
+6. host 断链容错已验证
+   - 板子断链 / 重连不会再把 `panel-bridge` 直接打挂
+   - macOS 上出现 `Os { code: 60, kind: TimedOut }` 时，host 会把它当作瞬时网络错误处理
+   - 修复后本地探针可继续读到 `HELLO/SNAP` 快照
 
 ## 预期现象
 

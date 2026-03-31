@@ -62,6 +62,15 @@ impl PanelSnapshot {
     }
 }
 
+pub fn apply_snapshot_if_changed(current: &mut PanelSnapshot, next: PanelSnapshot) -> bool {
+    if *current == next {
+        false
+    } else {
+        *current = next;
+        true
+    }
+}
+
 pub struct ProtocolParser {
     line_buffer: [u8; LINE_BUFFER_BYTES],
     line_len: usize,
@@ -256,6 +265,22 @@ mod tests {
 
         let snapshot = snapshot.expect("应当成功组帧");
         assert_eq!(snapshot.title(0), "abc?xyz");
+    }
+
+    #[test]
+    fn apply_snapshot_if_changed_skips_identical_frames() {
+        let mut current = PanelSnapshot::default();
+        current.active = true;
+        current.set_title(0, b"same");
+
+        let same = current;
+        assert!(!apply_snapshot_if_changed(&mut current, same));
+
+        let mut next = PanelSnapshot::default();
+        next.active = true;
+        next.set_title(0, b"changed");
+        assert!(apply_snapshot_if_changed(&mut current, next));
+        assert_eq!(current.title(0), "changed");
     }
 
     #[test]

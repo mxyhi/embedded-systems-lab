@@ -40,7 +40,10 @@ use esp_wifi::{
     wifi::{AuthMethod, ClientConfiguration, Configuration as WifiConfiguration, WifiController, new},
 };
 use esp32s3 as _;
-use lesson_3_codex_panel::{IDLE_TEXT, PanelSnapshot, ProtocolParser, TITLE_TEXT, parse_ipv4_address};
+use lesson_3_codex_panel::{
+    IDLE_TEXT, PanelSnapshot, ProtocolParser, TITLE_TEXT, apply_snapshot_if_changed,
+    parse_ipv4_address,
+};
 use mipidsi::{
     Builder,
     interface::SpiInterface,
@@ -430,8 +433,7 @@ fn drive_tcp_client(
 
         for &byte in &chunk[..size] {
             if let Some(next_snapshot) = parser.push_byte(byte) {
-                *snapshot = next_snapshot;
-                *screen_dirty = true;
+                *screen_dirty |= apply_snapshot_if_changed(snapshot, next_snapshot);
             }
         }
     }
